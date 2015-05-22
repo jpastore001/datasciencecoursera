@@ -1,0 +1,110 @@
+
+**Weight Lifting Data Project for Machine Learning**
+
+The goal of this project is to predict the manner in which a group of weight lifters did an exercise by observing the "classe" variable in the training set and using it as the dependent training variable.
+
+As per the assignment this writeup walks through the methodolgy for training a model to predict the classe variable for new unobserved trials.
+
+**The first step is to read raw data into R:**
+
+
+```{r eval = FALSE}
+# Get raw files from Coursera
+
+ad_tr <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+ad_tst <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+raw_train <- "./data/pml-training.csv"
+download.file(ad_tr, raw_train)
+raw_test <- "./data/pml-testing.csv"
+download.file(ad_tst, raw_test)
+
+# Read train csv to dataframe
+df.train <- read.csv("./data/pml-training.csv", na.strings = "NA", stringsAsFactors = F)
+df.test <- read.csv("./data/pml-testing.csv", na.strings = "NA", stringsAsFactors = F)
+
+```
+
+Next we drop derived fields and pull out the independent variable to a separate variable.
+
+```{r eval = FALSE}
+
+#drop derived vars
+x <- grep("^max|^min|^ampl|^var|^avg|^stdd|^ske|^kurt", names(df.train))
+df.train <- df.train[-x]
+df.test <- df.test[-x]
+
+#conv y to factor from chr
+df.train$classe <- factor(df.train$classe)
+
+#split features and y
+y.tr=df.train$classe
+keep <- names(df.train)[8:59]
+df.train=df.train[keep]
+df.test=df.test[keep]
+```
+
+Next we partition the training data into two distinct sets using a 90/10 break for training and test respectively.  Since we later use k-fold cross validation it is not essential to have a test set at all really.  10% is useful to get additional out-of-sample stats and is plenty big since we are using k-fold cross-validation during training.
+
+```{r eval = FALSE}
+# Partition training data
+inTrain <- createDataPartition(y.tr, p = .9, list = F)
+training <- df.train[inTrain, ]
+testing <- df.train[-inTrain, ]
+y.training <- y.tr[inTrain]
+y.testing <- y.tr[-inTrain]
+```
+
+I now preprocess the data applying principle components, Box-Cox transform, centering, scaling, and imputation of missing values.
+
+```{r eval = FALSE}
+# Preprocess data
+p=preProcess(x = training, method = c("BoxCox", "center", "scale", "knnImpute", "pca"), thresh = 0.95)
+training.p <- predict(p, training)
+testing.p <- predict(p, testing)
+print(p)
+```
+
+Output:
+```{r eval = FALSE}
+Call:
+preProcess.default(x = training, method = c("BoxCox", "center",
+ "scale", "knnImpute", "pca"), thresh = 0.95)
+
+Created from 17662 samples and 52 variables
+Pre-processing: Box-Cox transformation, centered, scaled, 5 nearest
+ neighbor imputation, principal component signal extraction 
+
+Lambda estimates for Box-Cox transformation:
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.900   1.175   1.450   1.450   1.725   2.000      50 
+
+PCA needed 25 components to capture 95 percent of the variance
+
+```
+
+Specify 5-Fold cross-validation and train the model using random-forest.  After trying a bunch of different models I found random-forest to work best here.
+
+```{r eval = FALSE}
+# 10-fold cross-validation
+tc <- trainControl(method = "cv", number = 5)
+
+# tain model using random-forest model
+model=train(training.p, y.training, method="rf", trControl = tc, verbose=F)
+
+```
+
+Next use trained model to predict classe variable for test datasets.
+
+```{r eval = FALSE}
+training.pred <- predict(model, training.p)
+testing.pred <- predict(model, testing.p)
+
+# apply same preprocessing from training set
+testset.p <- predict(p, df.test)
+testset.predict<-predict(model, testset.p)
+
+cm.test=confusionMatrix(testing.pred,y.testing)
+cm.test
+```
+
+This approach had 100% accuracy on Coursera's test set.
