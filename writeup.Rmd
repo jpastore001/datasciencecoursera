@@ -12,14 +12,14 @@ The first step is to read raw data into R:
 
 ad_tr <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 ad_tst <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
-raw_train <- "./data/pml-training.csv"
+raw_train <- "pml-training.csv"
 download.file(ad_tr, raw_train)
-raw_test <- "./data/pml-testing.csv"
+raw_test <- "pml-testing.csv"
 download.file(ad_tst, raw_test)
 
 # Read train csv to dataframe
-df.train <- read.csv("./data/pml-training.csv", na.strings = "NA", stringsAsFactors = F)
-df.test <- read.csv("./data/pml-testing.csv", na.strings = "NA", stringsAsFactors = F)
+df.train <- read.csv("pml-training.csv", na.strings = "NA", stringsAsFactors = F)
+df.test <- read.csv("pml-testing.csv", na.strings = "NA", stringsAsFactors = F)
 
 ```
 
